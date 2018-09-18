@@ -10,7 +10,7 @@ __pycache__/
 *.so
 
 #HDF5
-#*.hdf5
+*.hdf5
 
 # Distribution / packaging
 .Python
