@@ -87,5 +87,4 @@ class XML_preprocessor(object):
 ## example on how to use it
 import pickle
 data = XML_preprocessor('VOC2007/Annotations/').data
-pickle.dump(data,open('VOC2007.p','wb'))
-
+pickle.dump(data,open('VOC2007.pkl','wb'))
