@@ -140,10 +140,10 @@ class PriorBox(Layer):
         box_widths = 0.5 * np.array(box_widths)
         box_heights = 0.5 * np.array(box_heights)
         # define centers of prior boxes
-        step_x = img_width / layer_width
+        step_x = img_width / layer_width # レイヤー上の１ポイントがカバーするオリジナル画像上のピクセル数（layer_width=19, img_width=300ならstep_x=15.78）
         step_y = img_height / layer_height
         linx = np.linspace(0.5 * step_x, img_width - 0.5 * step_x,
-                           layer_width)
+                           layer_width) # img_width=300, layer_width=19 なら0-300の区間を19に分けた時のピクセル中心位置の数列（7.89, 23,68, ..., 292.105）
         liny = np.linspace(0.5 * step_y, img_height - 0.5 * step_y,
                            layer_height)
         centers_x, centers_y = np.meshgrid(linx, liny)
@@ -152,7 +152,7 @@ class PriorBox(Layer):
         # define xmin, ymin, xmax, ymax of prior boxes
         num_priors_ = len(self.aspect_ratios)
         prior_boxes = np.concatenate((centers_x, centers_y), axis=1)
-        prior_boxes = np.tile(prior_boxes, (1, 2 * num_priors_))
+        prior_boxes = np.tile(prior_boxes, (1, 2 * num_priors_)) # 「1, 」が必要かどうかはよくわからない…1ならなくても結果は同じ？それとも次元が一つ増える？
         prior_boxes[:, ::4] -= box_widths
         prior_boxes[:, 1::4] -= box_heights
         prior_boxes[:, 2::4] += box_widths
@@ -160,21 +160,21 @@ class PriorBox(Layer):
         prior_boxes[:, ::2] /= img_width
         prior_boxes[:, 1::2] /= img_height
         prior_boxes = prior_boxes.reshape(-1, 4)
-        if self.clip:
+        if self.clip: # prior_boxのxmin, ymin, xmax, ymaxは0-1でクリップしておく
             prior_boxes = np.minimum(np.maximum(prior_boxes, 0.0), 1.0)
         # define variances
         num_boxes = len(prior_boxes)
         if len(self.variances) == 1:
             variances = np.ones((num_boxes, 4)) * self.variances[0]
         elif len(self.variances) == 4:
-            variances = np.tile(self.variances, (num_boxes, 1))
+            variances = np.tile(self.variances, (num_boxes, 1)) # ここでvalianceを作る
         else:
             raise Exception('Must provide one or four variances.')
-        prior_boxes = np.concatenate((prior_boxes, variances), axis=1)
-        prior_boxes_tensor = K.expand_dims(K.variable(prior_boxes), 0)
+        prior_boxes = np.concatenate((prior_boxes, variances), axis=1) # 作ったvalianceをconcatenateする shape: (priorboxのサイズ, 4+4)
+        prior_boxes_tensor = K.expand_dims(K.variable(prior_boxes), 0) # バックエンドテンソルに変換（１次元追加）shape:TensorShape([Dimension(1), Dimension(54), Dimension(8)])
         if K.backend() == 'tensorflow':
-            pattern = [tf.shape(x)[0], 1, 1]
-            prior_boxes_tensor = tf.tile(prior_boxes_tensor, pattern)
+            pattern = [tf.shape(x)[0], 1, 1] # patternのshapeは(none, 1, 1)的な感じ。tf.shape(x)[0]はバッチ数
+            prior_boxes_tensor = tf.tile(prior_boxes_tensor, pattern) # TensorShape([Dimension(None), Dimension(54), Dimension(8)]) これはバッチ数だけタイルされた形（バッチ数はNoneで予約）
         elif K.backend() == 'theano':
             #TODO
             pass

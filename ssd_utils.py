@@ -111,7 +111,7 @@ class BBoxUtility(object):
         encoded_box[:, :2][assign_mask] /= assigned_priors_wh
         encoded_box[:, :2][assign_mask] /= assigned_priors[:, -4:-2]
         encoded_box[:, 2:4][assign_mask] = np.log(box_wh /
-                                                  assigned_priors_wh)
+                                                  assigned_priors_wh) #こちらはスケール（priorと正解boxの縦横比率の違いをエンコード）
         encoded_box[:, 2:4][assign_mask] /= assigned_priors[:, -2:]
         return encoded_box.ravel()
 
@@ -130,11 +130,11 @@ class BBoxUtility(object):
                     or in other words is assigned to some ground truth box,
                 assignment[:, -7:] are all 0. See loss for more details.
         """
-        assignment = np.zeros((self.num_priors, 4 + self.num_classes + 8))
-        assignment[:, 4] = 1.0
+        assignment = np.zeros((self.num_priors, 4 + self.num_classes + 8)) # num_classesはバックグラウンドを含む（21）。最後の８桁はアサイン時（ここ）にはprediction時と異なる使い方。エンコード対象の（positiveの）priorには-8の桁に1が入る-7以降はゼロ固定
+        assignment[:, 4] = 1.0 # とりあえず全てのpriorをclass0、すなわちバックグラウンドに紐付ける
         if len(boxes) == 0:
             return assignment
-        encoded_boxes = np.apply_along_axis(self.encode_box, 1, boxes[:, :4])
+        encoded_boxes = np.apply_along_axis(self.encode_box, 1, boxes[:, :4]) # 正解boxを
         encoded_boxes = encoded_boxes.reshape(-1, self.num_priors, 5)
         best_iou = encoded_boxes[:, :, -1].max(axis=0)
         best_iou_idx = encoded_boxes[:, :, -1].argmax(axis=0)
@@ -144,10 +144,11 @@ class BBoxUtility(object):
         encoded_boxes = encoded_boxes[:, best_iou_mask, :]
         assignment[:, :4][best_iou_mask] = encoded_boxes[best_iou_idx,
                                                          np.arange(assign_num),
-                                                         :4]
+                                                         :4] # best_iou_idxは複数boxのうちのどれが高いiouを持っているかのインデクスリスト／ndarrayのマージの仕方に慣れる！
         assignment[:, 4][best_iou_mask] = 0
         assignment[:, 5:-8][best_iou_mask] = boxes[best_iou_idx, 4:]
-        assignment[:, -8][best_iou_mask] = 1
+        assignment[:, -8][best_iou_mask] = 1 # ここでポジティブなアサインメントだけ1を代入しておく（フラグ）
+        positiveassignment = assignment[:, :][best_iou_mask]
         return assignment
 
     def decode_boxes(self, mbox_loc, mbox_priorbox, variances):
