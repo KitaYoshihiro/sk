@@ -288,3 +288,8 @@ def SSD300(input_shape, num_classes=21):
                                name='predictions')
     model = Model(net['input'], net['predictions'])
     return model
+
+if __name__ == '__main__':
+    input_shape = (300, 300, 3)
+    mymodel = SSD300(input_shape, num_classes=21)
+    print(mymodel.summary())
